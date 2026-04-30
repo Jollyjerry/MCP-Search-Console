@@ -40,26 +40,72 @@ function createBackendClient() {
   return { client, transport };
 }
 
-async function forwardToolCall(
-  client: Client,
-  name: string,
-  args?: Record<string, unknown>
-) {
-  const result = await client.callTool({ name, arguments: args });
-  if (!("content" in result)) {
-    throw new Error(`Unexpected tool result shape returned by backend for ${name}.`);
+let activeClient: Client | null = null;
+let activeTransport: StreamableHTTPClientTransport | null = null;
+let connectingPromise: Promise<Client> | null = null;
+
+async function ensureConnected(): Promise<Client> {
+  if (activeClient) return activeClient;
+  if (connectingPromise) return connectingPromise;
+  connectingPromise = (async () => {
+    const { client, transport } = createBackendClient();
+    await client.connect(transport);
+    activeClient = client;
+    activeTransport = transport;
+    return client;
+  })();
+  try {
+    return await connectingPromise;
+  } finally {
+    connectingPromise = null;
   }
-  return {
-    content: result.content,
-    structuredContent: result.structuredContent,
-    isError: result.isError
+}
+
+async function reconnect(): Promise<Client> {
+  const oldTransport = activeTransport;
+  activeClient = null;
+  activeTransport = null;
+  if (oldTransport) {
+    try {
+      await oldTransport.close();
+    } catch {
+      // ignore — transport may already be dead
+    }
+  }
+  return ensureConnected();
+}
+
+function isSessionLostError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /no valid session id|session not found|invalid session|HTTP 4\d\d/i.test(message);
+}
+
+async function forwardToolCall(name: string, args?: Record<string, unknown>) {
+  const callOnce = async (client: Client) => {
+    const result = await client.callTool({ name, arguments: args });
+    if (!("content" in result)) {
+      throw new Error(`Unexpected tool result shape returned by backend for ${name}.`);
+    }
+    return {
+      content: result.content,
+      structuredContent: result.structuredContent,
+      isError: result.isError
+    };
   };
+
+  let client = await ensureConnected();
+  try {
+    return await callOnce(client);
+  } catch (error) {
+    if (!isSessionLostError(error)) throw error;
+    console.error(`[dxt-proxy] backend session lost (${error instanceof Error ? error.message : "unknown"}), reconnecting...`);
+    client = await reconnect();
+    return await callOnce(client);
+  }
 }
 
 async function main() {
-  const { client, transport: backendTransport } = createBackendClient();
-  await client.connect(backendTransport);
-  await client.listTools();
+  await ensureConnected();
 
   const server = new McpServer({ name: "gsc-jollyroom-internal", version: "0.1.0" });
 
@@ -79,7 +125,7 @@ async function main() {
   server.registerTool(
     "ping",
     { title: "Ping", description: "Health check for the internal GSC MCP backend." },
-    async () => forwardToolCall(client, "ping")
+    async () => forwardToolCall("ping")
   );
 
   server.registerTool(
@@ -89,7 +135,7 @@ async function main() {
       description: "Return sanitized runtime configuration from the internal GSC MCP backend.",
       inputSchema: { includePaths: z.boolean().default(false) }
     },
-    async (input) => forwardToolCall(client, "get_current_config", input)
+    async (input) => forwardToolCall("get_current_config", input)
   );
 
   server.registerTool(
@@ -98,7 +144,7 @@ async function main() {
       title: "List Search Console Sites",
       description: "List all Search Console properties accessible to the configured service account."
     },
-    async () => forwardToolCall(client, "list_sites")
+    async () => forwardToolCall("list_sites")
   );
 
   server.registerTool(
@@ -120,7 +166,7 @@ async function main() {
         deviceFilter: deviceEnum.optional()
       }
     },
-    async (input) => forwardToolCall(client, "top_queries", input)
+    async (input) => forwardToolCall("top_queries", input)
   );
 
   server.registerTool(
@@ -143,7 +189,7 @@ async function main() {
         deviceFilter: deviceEnum.optional()
       }
     },
-    async (input) => forwardToolCall(client, "top_pages", input)
+    async (input) => forwardToolCall("top_pages", input)
   );
 
   server.registerTool(
@@ -161,7 +207,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "traffic_overview", input)
+    async (input) => forwardToolCall("traffic_overview", input)
   );
 
   server.registerTool(
@@ -179,7 +225,7 @@ async function main() {
         endDate: z.string().optional()
       }
     },
-    async (input) => forwardToolCall(client, "compare_periods", input)
+    async (input) => forwardToolCall("compare_periods", input)
   );
 
   server.registerTool(
@@ -200,7 +246,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "queries_for_page", input)
+    async (input) => forwardToolCall("queries_for_page", input)
   );
 
   server.registerTool(
@@ -215,7 +261,7 @@ async function main() {
         languageCode: z.string().min(2).max(8).default("en")
       }
     },
-    async (input) => forwardToolCall(client, "inspect_url", input)
+    async (input) => forwardToolCall("inspect_url", input)
   );
 
   server.registerTool(
@@ -235,7 +281,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "country_breakdown", input)
+    async (input) => forwardToolCall("country_breakdown", input)
   );
 
   server.registerTool(
@@ -253,7 +299,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "device_breakdown", input)
+    async (input) => forwardToolCall("device_breakdown", input)
   );
 
   server.registerTool(
@@ -272,7 +318,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "branded_vs_non_branded", input)
+    async (input) => forwardToolCall("branded_vs_non_branded", input)
   );
 
   server.registerTool(
@@ -297,7 +343,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "ctr_opportunities", input)
+    async (input) => forwardToolCall("ctr_opportunities", input)
   );
 
   server.registerTool(
@@ -316,7 +362,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "search_appearance_breakdown", input)
+    async (input) => forwardToolCall("search_appearance_breakdown", input)
   );
 
   server.registerTool(
@@ -340,7 +386,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "time_series", input)
+    async (input) => forwardToolCall("time_series", input)
   );
 
   server.registerTool(
@@ -364,7 +410,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "cannibalization_check", input)
+    async (input) => forwardToolCall("cannibalization_check", input)
   );
 
   server.registerTool(
@@ -377,7 +423,7 @@ async function main() {
         siteUrl: z.string().optional()
       }
     },
-    async (input) => forwardToolCall(client, "list_sitemaps", input)
+    async (input) => forwardToolCall("list_sitemaps", input)
   );
 
   server.registerTool(
@@ -397,7 +443,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "position_movement", input)
+    async (input) => forwardToolCall("position_movement", input)
   );
 
   server.registerTool(
@@ -419,7 +465,7 @@ async function main() {
         dataState: dataStateEnum.default("final")
       }
     },
-    async (input) => forwardToolCall(client, "query_performance", input)
+    async (input) => forwardToolCall("query_performance", input)
   );
 
   const stdioTransport = new StdioServerTransport();
@@ -428,7 +474,13 @@ async function main() {
 
   const shutdown = async () => {
     await server.close();
-    await backendTransport.close();
+    if (activeTransport) {
+      try {
+        await activeTransport.close();
+      } catch {
+        // ignore
+      }
+    }
   };
   process.on("SIGINT", () => void shutdown().finally(() => process.exit(0)));
   process.on("SIGTERM", () => void shutdown().finally(() => process.exit(0)));
