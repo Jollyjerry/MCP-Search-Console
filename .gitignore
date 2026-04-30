@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.ship
+secure/
+.DS_Store
+coverage/
+*.log
+build/
+artifacts/
