@@ -219,6 +219,188 @@ async function main() {
   );
 
   server.registerTool(
+    "country_breakdown",
+    {
+      title: "Country Breakdown",
+      description:
+        "Break down Search Console performance by country (top markets) for a site. Returns per-country clicks/impressions/CTR/position plus click share.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().int().min(1).max(250).default(20),
+        sortBy: sortByEnum.default("clicks"),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "country_breakdown", input)
+  );
+
+  server.registerTool(
+    "device_breakdown",
+    {
+      title: "Device Breakdown",
+      description:
+        "Split Search Console performance by device (DESKTOP / MOBILE / TABLET). Returns clicks/impressions/CTR/position per device plus shares.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "device_breakdown", input)
+  );
+
+  server.registerTool(
+    "branded_vs_non_branded",
+    {
+      title: "Branded vs Non-Branded Split",
+      description:
+        "Split Search Console traffic into branded vs non-branded by regex on the query. Returns clicks/impressions/CTR/position and share for each segment.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        brandRegex: z.string().default("jollyroom"),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "branded_vs_non_branded", input)
+  );
+
+  server.registerTool(
+    "ctr_opportunities",
+    {
+      title: "CTR Opportunities",
+      description:
+        "Find queries with high impressions but underperforming CTR — opinionated SEO opportunity finder. Returns potential additional clicks if CTR reached a position-based benchmark.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        minImpressions: z.number().int().min(1).default(100),
+        minPosition: z.number().min(1).default(5),
+        maxPosition: z.number().min(1).default(20),
+        maxCtr: z.number().min(0).max(1).default(0.05),
+        requireBothFilters: z.boolean().default(false),
+        limit: z.number().int().min(1).max(100).default(25),
+        candidatePoolSize: z.number().int().min(50).max(5000).default(1000),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "ctr_opportunities", input)
+  );
+
+  server.registerTool(
+    "search_appearance_breakdown",
+    {
+      title: "Search Appearance Breakdown",
+      description:
+        "Break down GSC performance by SERP appearance type (rich results, FAQ, video carousel, AMP, etc.). API restriction: cannot be combined with other dimensions/filters.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        sortBy: sortByEnum.default("clicks"),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "search_appearance_breakdown", input)
+  );
+
+  server.registerTool(
+    "time_series",
+    {
+      title: "Time Series",
+      description:
+        "Daily/weekly/monthly trend for a single GSC metric with optional query/page filter. Returns sparkline + per-bucket values.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        granularity: z.enum(["day", "week", "month"]).default("day"),
+        metric: sortByEnum.default("clicks"),
+        queryFilter: z.string().optional(),
+        queryMatchType: z.enum(["equals", "contains", "includingRegex"]).default("contains"),
+        pageFilter: z.string().optional(),
+        pageMatchType: z.enum(["equals", "contains"]).default("contains"),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "time_series", input)
+  );
+
+  server.registerTool(
+    "cannibalization_check",
+    {
+      title: "Keyword Cannibalization Check",
+      description:
+        "Find queries where multiple pages from the same site compete on close positions — SEO cleanup target.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        minImpressionsPerPage: z.number().int().min(1).default(20),
+        maxPositionGap: z.number().min(0).default(10),
+        maxAveragePosition: z.number().min(1).default(30),
+        minPagesPerQuery: z.number().int().min(2).default(2),
+        limit: z.number().int().min(1).max(100).default(20),
+        candidatePoolSize: z.number().int().min(100).max(5000).default(2000),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "cannibalization_check", input)
+  );
+
+  server.registerTool(
+    "list_sitemaps",
+    {
+      title: "List Sitemaps",
+      description:
+        "List submitted sitemaps with timestamps, error/warning counts, and per-content-type indexing stats.",
+      inputSchema: {
+        siteUrl: z.string().optional()
+      }
+    },
+    async (input) => forwardToolCall(client, "list_sitemaps", input)
+  );
+
+  server.registerTool(
+    "position_movement",
+    {
+      title: "Position Movement",
+      description:
+        "WoW/MoM query position comparison — surface biggest winners (improved position) and losers (dropped position).",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        comparison: z.enum(["wow", "mom"]).default("mom"),
+        minImpressions: z.number().int().min(1).default(50),
+        limit: z.number().int().min(1).max(100).default(20),
+        candidatePoolSize: z.number().int().min(100).max(5000).default(1000),
+        direction: z.enum(["winners", "losers", "both"]).default("both"),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "position_movement", input)
+  );
+
+  server.registerTool(
     "query_performance",
     {
       title: "Query Performance Breakdown",
