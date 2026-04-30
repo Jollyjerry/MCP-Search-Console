@@ -57,6 +57,14 @@ export class GscClient {
     return response.data.siteEntry ?? [];
   }
 
+  async inspectUrl(siteUrl: string, inspectionUrl: string, languageCode = "en") {
+    logger.debug("Inspecting URL", { siteUrl, inspectionUrl });
+    const response = await this.client.urlInspection.index.inspect({
+      requestBody: { siteUrl, inspectionUrl, languageCode }
+    });
+    return response.data;
+  }
+
   async query(request: SearchAnalyticsRequest) {
     const { siteUrl, ...body } = request;
     logger.debug("Running GSC search analytics query", {

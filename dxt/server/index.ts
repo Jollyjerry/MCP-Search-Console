@@ -147,6 +147,78 @@ async function main() {
   );
 
   server.registerTool(
+    "traffic_overview",
+    {
+      title: "Search Console Traffic Overview",
+      description:
+        "Return a Search Console KPI block for a site over a preset or custom date range: total clicks, total impressions, average CTR, average position.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "traffic_overview", input)
+  );
+
+  server.registerTool(
+    "compare_periods",
+    {
+      title: "Compare Search Console Periods",
+      description:
+        "Compare clicks, impressions, CTR, and average position across two periods: WoW, MoM, YoY, or previous_period. Returns totals + absolute and percentage deltas.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        comparison: z.enum(["wow", "mom", "yoy", "previous_period"]).default("wow"),
+        searchType: searchTypeEnum.default("web"),
+        dataState: dataStateEnum.default("final"),
+        startDate: z.string().optional(),
+        endDate: z.string().optional()
+      }
+    },
+    async (input) => forwardToolCall(client, "compare_periods", input)
+  );
+
+  server.registerTool(
+    "queries_for_page",
+    {
+      title: "Queries For Page",
+      description:
+        "Reverse lookup: given a page URL, return the top organic search queries that drove clicks/impressions to it.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        page: z.string().min(1),
+        matchType: z.enum(["equals", "contains"]).default("equals"),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().int().min(1).max(1000).default(25),
+        sortBy: sortByEnum.default("clicks"),
+        dataState: dataStateEnum.default("final")
+      }
+    },
+    async (input) => forwardToolCall(client, "queries_for_page", input)
+  );
+
+  server.registerTool(
+    "inspect_url",
+    {
+      title: "URL Inspection",
+      description:
+        "Run Google's URL Inspection API on a specific URL: index status, coverage, last crawl, canonical match, sitemap inclusion, mobile usability, rich results.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        inspectionUrl: z.string().min(1),
+        languageCode: z.string().min(2).max(8).default("en")
+      }
+    },
+    async (input) => forwardToolCall(client, "inspect_url", input)
+  );
+
+  server.registerTool(
     "query_performance",
     {
       title: "Query Performance Breakdown",
