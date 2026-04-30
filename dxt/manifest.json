@@ -2,7 +2,7 @@
   "dxt_version": "0.1",
   "name": "gsc-jollyroom-internal",
   "display_name": "Search Console Jollyroom Internal",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Claude Desktop extension that connects to the internal Jollyroom Search Console MCP server.",
   "long_description": "Installs a local Claude Desktop MCP extension that forwards tool calls to the internal Search Console MCP backend running inside the Jollyroom network. Pairs with the GA4 MCP — GA4 says how a page performed for sessions, GSC says how it performed for queries and impressions.",
   "author": {

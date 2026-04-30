@@ -57,6 +57,12 @@ export class GscClient {
     return response.data.siteEntry ?? [];
   }
 
+  async listSitemaps(siteUrl: string) {
+    logger.debug("Listing sitemaps", { siteUrl });
+    const response = await this.client.sitemaps.list({ siteUrl });
+    return response.data.sitemap ?? [];
+  }
+
   async inspectUrl(siteUrl: string, inspectionUrl: string, languageCode = "en") {
     logger.debug("Inspecting URL", { siteUrl, inspectionUrl });
     const response = await this.client.urlInspection.index.inspect({
