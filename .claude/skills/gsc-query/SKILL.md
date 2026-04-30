@@ -42,6 +42,14 @@ After every successful GSC call:
 4. Position with 1 decimal (`5.2` for "average position 5.2").
 5. Surface the top 5-10 rows in the response, full row list in `structuredContent.rows`.
 
+## Multi-property workflows
+
+If the user has multiple GSC properties (`jollyroom.dk`, `.se`, `.no`, `.fi`):
+- For comparisons, call the same tool N times with different `siteUrl` and synthesize side-by-side. Don't try to merge raw rows — clicks/impressions don't sum across markets in any meaningful way.
+- For "best market" questions, lead with `traffic_overview` per site, then drill into the strongest with `top_queries`.
+- For per-market regression checks, `compare_periods` per site and surface only the ones that moved beyond a threshold (e.g., >5% click drop).
+- For brand consistency, `branded_vs_non_branded` with the same `brandRegex` across all sites — share variations reveal where the brand is weakest.
+
 ## Combining with GA4
 
 GA4 and GSC pair beautifully:
