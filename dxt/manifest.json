@@ -1,0 +1,67 @@
+{
+  "dxt_version": "0.1",
+  "name": "gsc-jollyroom-internal",
+  "display_name": "Search Console Jollyroom Internal",
+  "version": "0.1.0",
+  "description": "Claude Desktop extension that connects to the internal Jollyroom Search Console MCP server.",
+  "long_description": "Installs a local Claude Desktop MCP extension that forwards tool calls to the internal Search Console MCP backend running inside the Jollyroom network. Pairs with the GA4 MCP — GA4 says how a page performed for sessions, GSC says how it performed for queries and impressions.",
+  "author": {
+    "name": "Jollyroom"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jollyjerry/MCP-Search-Console"
+  },
+  "homepage": "https://github.com/Jollyjerry/MCP-Search-Console",
+  "support": "https://github.com/Jollyjerry/MCP-Search-Console/issues",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "GSC_INTERNAL_MCP_URL": "${user_config.internal_mcp_url}",
+        "GSC_INTERNAL_MCP_AUTH_TOKEN": "${user_config.internal_mcp_auth_token}"
+      }
+    }
+  },
+  "keywords": [
+    "search-console",
+    "gsc",
+    "seo",
+    "mcp",
+    "claude-desktop",
+    "internal"
+  ],
+  "license": "ISC",
+  "user_config": {
+    "internal_mcp_url": {
+      "type": "string",
+      "title": "Internal MCP URL",
+      "description": "Internal base URL or direct /mcp URL for the GSC backend, for example http://gsc-mcp.jollyroom.local:3001 or http://10.201.15.60:3001/mcp.",
+      "required": true
+    },
+    "internal_mcp_auth_token": {
+      "type": "string",
+      "title": "Internal MCP bearer token",
+      "description": "Shared bearer token for the internal GSC MCP backend. Leave empty only if the backend auth is disabled.",
+      "sensitive": true,
+      "required": false
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
+  },
+  "tools_generated": true
+}

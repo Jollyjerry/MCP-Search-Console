@@ -8,6 +8,10 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "start:http": "node dist/index.js --http",
+    "build:dxt": "node scripts/buildDxt.mjs",
+    "pack:dxt": "node scripts/packDxt.mjs",
+    "ship": "node scripts/ship.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "license": "ISC",
@@ -19,6 +23,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
+    "bestzip": "^2.2.3",
+    "esbuild": "^0.28.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }
