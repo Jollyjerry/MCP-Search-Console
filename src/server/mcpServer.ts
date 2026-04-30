@@ -3,10 +3,14 @@ import * as z from "zod";
 
 import { env } from "../config/env.js";
 import { createGscClient } from "../gsc/client.js";
+import { comparePeriods } from "../gsc/reports/comparePeriods.js";
+import { inspectUrl } from "../gsc/reports/inspectUrl.js";
 import { listSites } from "../gsc/reports/listSites.js";
+import { getQueriesForPage } from "../gsc/reports/queriesForPage.js";
 import { getQueryPerformance } from "../gsc/reports/queryPerformance.js";
 import { getTopPages } from "../gsc/reports/topPages.js";
 import { getTopQueries } from "../gsc/reports/topQueries.js";
+import { getTrafficOverview } from "../gsc/reports/trafficOverview.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger(env.LOG_LEVEL);
@@ -159,6 +163,126 @@ export function createMcpServer() {
       } catch (error) {
         logger.error("top_pages failed", { message: error instanceof Error ? error.message : "unknown" });
         return toolError("top_pages", error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "traffic_overview",
+    {
+      title: "Search Console Traffic Overview",
+      description:
+        "Return a Search Console KPI block for a site over a preset or custom date range: total clicks, total impressions, average CTR, average position. Use this when the user wants a quick organic-search KPI summary without per-row detail.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        searchType: z.enum(["web", "image", "video", "news", "discover", "googleNews"]).default("web"),
+        dataState: z.enum(["final", "all"]).default("final")
+      }
+    },
+    async (input) => {
+      try {
+        const result = await getTrafficOverview(createGscClient(), input as any);
+        logger.info("Handled traffic_overview", { siteUrl: result.siteUrl });
+        return {
+          content: [{ type: "text", text: result.summary }],
+          structuredContent: result
+        };
+      } catch (error) {
+        logger.error("traffic_overview failed", { message: error instanceof Error ? error.message : "unknown" });
+        return toolError("traffic_overview", error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "compare_periods",
+    {
+      title: "Compare Search Console Periods",
+      description:
+        "Compare clicks, impressions, CTR, and average position across two periods: WoW (last 7d vs prior 7d), MoM (last 30d vs prior 30d), YoY (last 30d vs same 30d a year ago), or previous_period. Returns totals + absolute and percentage deltas. Custom startDate/endDate overrides the comparison preset and uses an equal-length prior window.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        comparison: z.enum(["wow", "mom", "yoy", "previous_period"]).default("wow"),
+        searchType: z.enum(["web", "image", "video", "news", "discover", "googleNews"]).default("web"),
+        dataState: z.enum(["final", "all"]).default("final"),
+        startDate: z.string().optional(),
+        endDate: z.string().optional()
+      }
+    },
+    async (input) => {
+      try {
+        const result = await comparePeriods(createGscClient(), input as any);
+        logger.info("Handled compare_periods", { siteUrl: result.siteUrl, comparison: result.comparison });
+        return {
+          content: [{ type: "text", text: result.summary }],
+          structuredContent: result
+        };
+      } catch (error) {
+        logger.error("compare_periods failed", { message: error instanceof Error ? error.message : "unknown" });
+        return toolError("compare_periods", error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "queries_for_page",
+    {
+      title: "Queries For Page",
+      description:
+        "Reverse lookup: given a page URL, return the top organic search queries that drove clicks/impressions to it. Use matchType='contains' to match a path prefix or substring instead of exact URL.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        page: z.string().min(1),
+        matchType: z.enum(["equals", "contains"]).default("equals"),
+        preset: presetEnum.optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        limit: z.number().int().min(1).max(1000).default(25),
+        sortBy: z.enum(["clicks", "impressions", "ctr", "position"]).default("clicks"),
+        dataState: z.enum(["final", "all"]).default("final")
+      }
+    },
+    async (input) => {
+      try {
+        const result = await getQueriesForPage(createGscClient(), input as any);
+        logger.info("Handled queries_for_page", { siteUrl: result.siteUrl, page: result.page, rowCount: result.rowCount });
+        return {
+          content: [{ type: "text", text: `${result.summary}\n\n${result.preview}` }],
+          structuredContent: result
+        };
+      } catch (error) {
+        logger.error("queries_for_page failed", { message: error instanceof Error ? error.message : "unknown" });
+        return toolError("queries_for_page", error);
+      }
+    }
+  );
+
+  server.registerTool(
+    "inspect_url",
+    {
+      title: "URL Inspection",
+      description:
+        "Run Google's URL Inspection API on a specific URL: index status (verdict, coverage, robots.txt state, last crawl), canonical match, sitemap inclusion, mobile usability, and rich results detection. Useful when the user asks why a page isn't indexed or what state Google sees it in.",
+      inputSchema: {
+        siteUrl: z.string().optional(),
+        inspectionUrl: z.string().min(1),
+        languageCode: z.string().min(2).max(8).default("en")
+      }
+    },
+    async (input) => {
+      try {
+        const result = await inspectUrl(createGscClient(), input as any);
+        logger.info("Handled inspect_url", { siteUrl: result.siteUrl, verdict: result.verdict });
+        return {
+          content: [{ type: "text", text: `${result.summary}\n\n${result.preview}` }],
+          structuredContent: result
+        };
+      } catch (error) {
+        logger.error("inspect_url failed", { message: error instanceof Error ? error.message : "unknown" });
+        return toolError("inspect_url", error);
       }
     }
   );
